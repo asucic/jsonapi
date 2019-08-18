@@ -1,0 +1,17 @@
+{
+    "name": "antonio/json-api",
+    "description": "Library that handles serialization and hydration of objects and arrays into/from json strings compliant with JSON:API standard.",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Antonio Sučić",
+            "email": "antonio.suc@hotmail.com"
+        }
+    ],
+    "require": {
+        "php": "7.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.3"
+    }
+}
