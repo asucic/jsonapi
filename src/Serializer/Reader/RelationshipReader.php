@@ -4,42 +4,62 @@ namespace ASucic\JsonApi\Serializer\Reader;
 
 use ASucic\JsonApi\Exception\Serializer\Reader\InvalidSchemaException;
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
+use ASucic\JsonApi\Schema\IdentityInterface;
 use ASucic\JsonApi\Schema\RelationshipInterface;
+use ASucic\JsonApi\Service\ArraySort;
 use ReflectionException;
 
-class RelationshipReader
+final class RelationshipReader
 {
     private IdentityReader $identityReader;
     private PropertyReader $propertyReader;
+    private ArraySort $sorter;
 
-    public function __construct(IdentityReader $identityReader, PropertyReader $propertyReader)
-    {
+    public function __construct(
+        IdentityReader $identityReader,
+        PropertyReader $propertyReader,
+        ArraySort $sorter
+    ) {
         $this->identityReader = $identityReader;
         $this->propertyReader = $propertyReader;
+        $this->sorter = $sorter;
     }
 
     /** @throws PropertyNotFoundException|ReflectionException|InvalidSchemaException */
-    public function read(object $object, RelationshipInterface $schema): array
+    public function read(object $object, RelationshipInterface $schema, array $included): array
     {
-        $relationships = [];
-        foreach ($schema->relationships() as $relationship => $schemaName) {
-            $resource = $this->propertyReader->read($object, $relationship);
+        $result = [];
 
-            if (!is_iterable($resource)) {
-                $relationships['relationships'][$relationship]['data'] =
-                    $this->identityReader->read($resource, new $schemaName)
-                ;
+        $included = $this->sorter->sortIncluded($included);
+
+        foreach ($schema->relationships() as $relationship => $schemaName) {
+            if (!array_key_exists($relationship, $included)) {
+                continue;
+            }
+
+            $relatedSchema = new $schemaName;
+
+            if (!$relatedSchema instanceof IdentityInterface) {
+                throw new InvalidSchemaException(get_class($relatedSchema));
+            }
+
+            $relation = $this->propertyReader->read($object, $relationship);
+
+            if (!is_iterable($relation)) {
+                $resource = $this->identityReader->read($relation, $relatedSchema);
+
+                $result[$relationship]['data'] = $resource;
 
                 continue;
             }
 
-            foreach ($resource as $item) {
-                $relationships['relationships'][$relationship]['data'][] =
-                    $this->identityReader->read($item, new $schemaName)
-                ;
+            foreach ($relation as $item) {
+                $resource = $this->identityReader->read($item, $relatedSchema);
+
+                $result[$relationship]['data'][] = $resource;
             }
         }
 
-        return $relationships;
+        return $result;
     }
 }

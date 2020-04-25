@@ -1,6 +1,6 @@
 <?php declare(strict_types = 1);
 
-namespace Test\Unit;
+namespace Test\Unit\Serializer\Reader;
 
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ASucic\JsonApi\Serializer\Reader\AttributeReader;

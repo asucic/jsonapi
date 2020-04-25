@@ -4,6 +4,7 @@ namespace Test\Resource\Relationship\Valid;
 
 class PublicRelationship
 {
+    public int $id = 1;
     public RelatedObject $related;
     public array $multipleObjects;
 

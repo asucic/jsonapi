@@ -1,8 +1,9 @@
 <?php declare(strict_types = 1);
 
-namespace Test\Unit;
+namespace Test\Unit\Serializer\Reader;
 
 use ASucic\JsonApi\Serializer\Reader;
+use ASucic\JsonApi\Service\ArraySort;
 use Generator;
 use PHPUnit\Framework\TestCase;
 use Test\Resource\Relationship\Valid;
@@ -16,37 +17,36 @@ class RelationshipReaderTest extends TestCase
     {
         parent::setUpBeforeClass();
 
+        $sorter = new ArraySort;
         $propertyReader = new Reader\PropertyReader;
-        self::$reader = new Reader\RelationshipReader(
-            new Reader\IdentityReader($propertyReader),
-            $propertyReader,
-        );
+        $identityReader = new Reader\IdentityReader($propertyReader);
+
+        self::$reader = new Reader\RelationshipReader($identityReader, $propertyReader, $sorter);
     }
 
     /** @test @dataProvider objectsWithValidRelationships */
     public function can_read_relationships_from_valid_object(object $object): void
     {
-        $result = self::$reader->read($object, new MainSchema);
+        $relationships = self::$reader->read($object, new MainSchema, ['related', 'multipleObjects']);
+
         $expected = [
-            'relationships' => [
-                'related' => [
-                    'data' => [
+            'related' => [
+                'data' => [
+                    'type' => 'relatedObject',
+                    'id' => '1',
+                ]
+            ],
+            'multipleObjects' => [
+                'data' => [
+                    [
                         'type' => 'relatedObject',
-                        'id' => 1,
+                        'id' => '1',
                     ]
-                ],
-                'multipleObjects' => [
-                    'data' => [
-                        [
-                            'type' => 'relatedObject',
-                            'id' => 1,
-                        ]
-                    ]
-                ],
+                ]
             ],
         ];
 
-        $this->assertSame($expected, $result);
+        $this->assertSame($expected, $relationships);
     }
 
     /** @return Generator */

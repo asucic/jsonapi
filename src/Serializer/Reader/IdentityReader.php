@@ -6,7 +6,7 @@ use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ASucic\JsonApi\Schema\IdentityInterface;
 use ReflectionException;
 
-class IdentityReader
+final class IdentityReader
 {
     private PropertyReader $propertyReader;
 
@@ -20,7 +20,7 @@ class IdentityReader
     {
         return [
             'type' => $schema->type(),
-            'id' => $this->propertyReader->read($object, 'id'),
+            'id' => (string) $this->propertyReader->read($object, 'id'),
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace Test\Resource\Relationship\Valid;
 
 class NoMethodPrefixRelationship
 {
+    public int $id = 1;
     private RelatedObject $related;
     private array $multipleObjects;
 

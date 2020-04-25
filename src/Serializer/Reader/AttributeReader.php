@@ -6,7 +6,7 @@ use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ASucic\JsonApi\Schema\AttributeInterface;
 use ReflectionException;
 
-class AttributeReader
+final class AttributeReader
 {
     private PropertyReader $propertyReader;
 

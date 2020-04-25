@@ -6,7 +6,7 @@ use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ReflectionClass;
 use ReflectionException;
 
-class PropertyReader
+final class PropertyReader
 {
     private const METHOD_PREFIXES = [
         '',
