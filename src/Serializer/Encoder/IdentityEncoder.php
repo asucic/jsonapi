@@ -1,26 +1,26 @@
 <?php declare(strict_types = 1);
 
-namespace ASucic\JsonApi\Serializer\Reader;
+namespace ASucic\JsonApi\Serializer\Encoder;
 
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ASucic\JsonApi\Schema\IdentityInterface;
 use ReflectionException;
 
-final class IdentityReader
+class IdentityEncoder
 {
-    private PropertyReader $propertyReader;
+    private PropertyEncoder $propertyReader;
 
-    public function __construct(PropertyReader $propertyReader)
+    public function __construct(PropertyEncoder $propertyReader)
     {
         $this->propertyReader = $propertyReader;
     }
 
     /** @throws PropertyNotFoundException|ReflectionException */
-    public function read(object $object, IdentityInterface $schema): array
+    public function encode(object $object, IdentityInterface $schema): array
     {
         return [
             'type' => $schema->type(),
-            'id' => (string) $this->propertyReader->read($object, 'id'),
+            'id' => (string) $this->propertyReader->encode($object, 'id'),
         ];
     }
 }

@@ -2,8 +2,7 @@
 
 namespace Test\Unit\Serializer\Reader;
 
-use ASucic\JsonApi\Serializer\Reader;
-use ASucic\JsonApi\Service\ArraySort;
+use ASucic\JsonApi\Factory\EncoderFactory;
 use Generator;
 use PHPUnit\Framework\TestCase;
 use Test\Resource\Relationship\Valid;
@@ -11,23 +10,12 @@ use Test\Resource\Schema\Relationship\MainSchema;
 
 class RelationshipReaderTest extends TestCase
 {
-    public static Reader\RelationshipReader $reader;
-
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        $sorter = new ArraySort;
-        $propertyReader = new Reader\PropertyReader;
-        $identityReader = new Reader\IdentityReader($propertyReader);
-
-        self::$reader = new Reader\RelationshipReader($identityReader, $propertyReader, $sorter);
-    }
-
     /** @test @dataProvider objectsWithValidRelationships */
     public function can_read_relationships_from_valid_object(object $object): void
     {
-        $relationships = self::$reader->read($object, new MainSchema, ['related', 'multipleObjects']);
+        $relationships = EncoderFactory::createRelationshipEncoder()
+            ->encode($object, new MainSchema, ['related', 'multipleObjects'])
+        ;
 
         $expected = [
             'related' => [

@@ -1,29 +1,26 @@
 <?php declare(strict_types = 1);
 
-namespace ASucic\JsonApi\Serializer\Reader;
+namespace ASucic\JsonApi\Serializer\Encoder;
 
-use ASucic\JsonApi\Exception\Serializer\Reader\InvalidSchemaException;
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ASucic\JsonApi\Schema\AttributeInterface;
-use ASucic\JsonApi\Schema\IdentityInterface;
 use ASucic\JsonApi\Schema\RelationshipInterface;
 use ASucic\JsonApi\Service\ArraySort;
 use ReflectionException;
-use Traversable;
 
-final class IncludedReader
+class IncludedEncoder
 {
-    private PropertyReader $propertyReader;
-    private IdentityReader $identityReader;
-    private AttributeReader $attributeReader;
-    private RelationshipReader $relationshipReader;
+    private PropertyEncoder $propertyReader;
+    private IdentityEncoder $identityReader;
+    private AttributeEncoder $attributeReader;
+    private RelationshipEncoder $relationshipReader;
     private ArraySort $sorter;
 
     public function __construct(
-        PropertyReader $propertyReader,
-        IdentityReader $identityReader,
-        AttributeReader $attributeReader,
-        RelationshipReader $relationshipReader,
+        PropertyEncoder $propertyReader,
+        IdentityEncoder $identityReader,
+        AttributeEncoder $attributeReader,
+        RelationshipEncoder $relationshipReader,
         ArraySort $sorter
     ) {
         $this->propertyReader = $propertyReader;
@@ -33,15 +30,15 @@ final class IncludedReader
         $this->sorter = $sorter;
     }
 
-    /** @throws PropertyNotFoundException|ReflectionException|InvalidSchemaException */
-    public function read(object $object, RelationshipInterface $schema, array $included): array
+    /** @throws PropertyNotFoundException|ReflectionException */
+    public function encode(object $object, RelationshipInterface $schema, array $included): array
     {
         $included = $this->sorter->sortIncluded($included);
 
         return $this->process($object, $schema, $included);
     }
 
-    /** @throws PropertyNotFoundException|ReflectionException|InvalidSchemaException */
+    /** @throws PropertyNotFoundException|ReflectionException */
     private function process(object $object, RelationshipInterface $schema, array $included): array
     {
         $result = [];
@@ -52,30 +49,26 @@ final class IncludedReader
             }
 
             $relatedSchema = new $schemaName;
-            if (!$relatedSchema instanceof IdentityInterface) {
-                throw new InvalidSchemaException(get_class($relatedSchema));
-            }
-
-            $relation = $this->propertyReader->read($object, $relationship);
+            $relation = $this->propertyReader->encode($object, $relationship);
 
             if (!is_iterable($relation)) {
                 $relation = [$relation];
             }
 
             foreach ($relation as $item) {
-                $identity = $this->identityReader->read($item, $relatedSchema);
+                $identity = $this->identityReader->encode($item, $relatedSchema);
                 $id = "$relationship-$identity[id]";
 
                 $result[$id] = $identity;
 
                 if ($relatedSchema instanceof AttributeInterface) {
-                    $attributes = $this->attributeReader->read($item, $relatedSchema);
+                    $attributes = $this->attributeReader->encode($item, $relatedSchema);
                     $result[$id]['attributes'] = $attributes;
                 }
 
                 if ($relatedSchema instanceof RelationshipInterface) {
                     $relationships = $this->relationshipReader
-                        ->read($item, $relatedSchema, $included[$relationship] ?? [])
+                        ->encode($item, $relatedSchema, $included[$relationship] ?? [])
                     ;
 
                     $result[$id]['relationships'] = $relationships;

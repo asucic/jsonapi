@@ -3,8 +3,7 @@
 namespace Test\Unit\Serializer\Reader;
 
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
-use ASucic\JsonApi\Serializer\Reader\AttributeReader;
-use ASucic\JsonApi\Serializer\Reader\PropertyReader;
+use ASucic\JsonApi\Factory\EncoderFactory;
 use Generator;
 use PHPUnit\Framework\TestCase;
 use Test\Resource\Schema\Attribute\Sample;
@@ -13,19 +12,10 @@ use Test\Resource\Attribute\Valid;
 
 class AttributeReaderTest extends TestCase
 {
-    public static AttributeReader $reader;
-
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        self::$reader = new AttributeReader(new PropertyReader);
-    }
-
     /** @test @dataProvider objectsWithValidAttributes */
     public function can_read_attributes_from_valid_object(object $object): void
     {
-        $result = self::$reader->read($object, new Sample);
+        $result = EncoderFactory::createAttributeEncoder()->encode($object, new Sample);
         $expected = [
             'attribute' => 'test',
         ];
@@ -38,7 +28,7 @@ class AttributeReaderTest extends TestCase
     {
         $this->expectException(PropertyNotFoundException::class);
 
-        self::$reader->read($object, new Sample);
+        EncoderFactory::createAttributeEncoder()->encode($object, new Sample);
     }
 
     /** @return Generator */

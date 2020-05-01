@@ -1,32 +1,30 @@
 <?php declare(strict_types = 1);
 
-namespace ASucic\JsonApi\Serializer\Reader;
+namespace ASucic\JsonApi\Serializer\Encoder;
 
-use ASucic\JsonApi\Exception\Serializer\Reader\InvalidSchemaException;
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
-use ASucic\JsonApi\Schema\IdentityInterface;
 use ASucic\JsonApi\Schema\RelationshipInterface;
 use ASucic\JsonApi\Service\ArraySort;
 use ReflectionException;
 
-final class RelationshipReader
+class RelationshipEncoder
 {
-    private IdentityReader $identityReader;
-    private PropertyReader $propertyReader;
+    private PropertyEncoder $propertyReader;
+    private IdentityEncoder $identityReader;
     private ArraySort $sorter;
 
     public function __construct(
-        IdentityReader $identityReader,
-        PropertyReader $propertyReader,
+        PropertyEncoder $propertyReader,
+        IdentityEncoder $identityReader,
         ArraySort $sorter
     ) {
-        $this->identityReader = $identityReader;
         $this->propertyReader = $propertyReader;
+        $this->identityReader = $identityReader;
         $this->sorter = $sorter;
     }
 
-    /** @throws PropertyNotFoundException|ReflectionException|InvalidSchemaException */
-    public function read(object $object, RelationshipInterface $schema, array $included): array
+    /** @throws PropertyNotFoundException|ReflectionException */
+    public function encode(object $object, RelationshipInterface $schema, array $included): array
     {
         $result = [];
 
@@ -38,15 +36,10 @@ final class RelationshipReader
             }
 
             $relatedSchema = new $schemaName;
-
-            if (!$relatedSchema instanceof IdentityInterface) {
-                throw new InvalidSchemaException(get_class($relatedSchema));
-            }
-
-            $relation = $this->propertyReader->read($object, $relationship);
+            $relation = $this->propertyReader->encode($object, $relationship);
 
             if (!is_iterable($relation)) {
-                $resource = $this->identityReader->read($relation, $relatedSchema);
+                $resource = $this->identityReader->encode($relation, $relatedSchema);
 
                 $result[$relationship]['data'] = $resource;
 
@@ -54,7 +47,7 @@ final class RelationshipReader
             }
 
             foreach ($relation as $item) {
-                $resource = $this->identityReader->read($item, $relatedSchema);
+                $resource = $this->identityReader->encode($item, $relatedSchema);
 
                 $result[$relationship]['data'][] = $resource;
             }

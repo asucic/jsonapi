@@ -2,56 +2,54 @@
 
 namespace Test\Unit\Serializer;
 
-use ASucic\JsonApi\Serializer\JsonApiSerializer;
-use ASucic\JsonApi\Serializer\Reader;
-use ASucic\JsonApi\Service\ArraySort;
+use ASucic\JsonApi\Factory\SerializerFactory;
 use PHPUnit\Framework\TestCase;
 use Test\Resource\Entity\Embedded1;
 use Test\Resource\Entity\Embedded2;
 use Test\Resource\Entity\Embedded3;
+use Test\Resource\Entity\Order\Item;
 use Test\Resource\Entity\TestObject;
 use Test\Resource\Entity\TestRelatedObject;
 use Test\Resource\Schema\Entity\Embedded1Schema;
 use Test\Resource\Schema\Entity\TestObjectSchema;
+use Test\Resource\Schema\Order\ItemSchema;
 
 class JsonApiSerializerSingleTest extends TestCase
 {
-    public static JsonApiSerializer $serializer;
-
-    public static function setUpBeforeClass(): void
+    /** @test */
+    public function can_serialize_simple_object(): void
     {
-        parent::setUpBeforeClass();
+        $item = new Item(1, 10, 100,'Sample');
 
-        $sorter = new ArraySort();
-        $propertyReader = new Reader\PropertyReader();
-        $attributeReader = new Reader\AttributeReader($propertyReader);
-        $identityReader = new Reader\IdentityReader($propertyReader);
-        $relationshipReader = new Reader\RelationshipReader($identityReader, $propertyReader, $sorter);
-        $includedReader = new Reader\IncludedReader(
-            $propertyReader,
-            $identityReader,
-            $attributeReader,
-            $relationshipReader,
-            $sorter,
-        );
+        $result = SerializerFactory::createJsonApiSerializer()->single($item, new ItemSchema);
 
-        self::$serializer = new JsonApiSerializer(
-            $attributeReader,
-            $identityReader,
-            $relationshipReader,
-            $includedReader,
-        );
+        $expected = [
+            'data' => [
+                'type' => 'order-item',
+                'id' => '1',
+                'attributes' => [
+                    'quantity' => 10,
+                    'price' => 100,
+                    'name' => 'Sample',
+                ],
+            ],
+        ];
+
+        $this->assertSame($expected, $result);
     }
 
     /** @test */
-    public function can_serialize_object(): void
+    public function can_serialize_object_with_partial_relations(): void
     {
         $object = new TestObject(1, 'test', new TestRelatedObject(1, 'test1'), [
             new TestRelatedObject(2, 'test2'),
             new TestRelatedObject(3, 'test3'),
         ]);
 
-        $result = self::$serializer->single($object, new TestObjectSchema, ['relation', 'relations']);
+        $result = SerializerFactory::createJsonApiSerializer()
+            ->single($object, new TestObjectSchema, ['relations', 'unknown'])
+        ;
+
         $expected = [
             'data' => [
                 'type' => 'test',
@@ -60,12 +58,6 @@ class JsonApiSerializerSingleTest extends TestCase
                     'title' => 'test',
                 ],
                 'relationships' => [
-                    'relation' => [
-                        'data' => [
-                            'type' => 'related',
-                            'id' => '1',
-                        ],
-                    ],
                     'relations' => [
                         'data' => [
                             [
@@ -81,13 +73,6 @@ class JsonApiSerializerSingleTest extends TestCase
                 ],
             ],
             'included' => [
-                [
-                    'type' => 'related',
-                    'id' => '1',
-                    'attributes' => [
-                        'title' => 'test1',
-                    ],
-                ],
                 [
                     'type' => 'related',
                     'id' => '2',
@@ -115,7 +100,7 @@ class JsonApiSerializerSingleTest extends TestCase
         $relationship = new Embedded2(2, $embeddedRelationship);
         $object = new Embedded1(1, $relationship);
 
-        $result = self::$serializer->single($object, new Embedded1Schema, [
+        $result = SerializerFactory::createJsonApiSerializer()->single($object, new Embedded1Schema, [
             'embedded2',
             'embedded2.embedded3',
         ]);

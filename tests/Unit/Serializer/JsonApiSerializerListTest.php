@@ -2,79 +2,72 @@
 
 namespace Test\Unit\Serializer;
 
-use ASucic\JsonApi\Serializer\JsonApiSerializer;
-use ASucic\JsonApi\Serializer\Reader;
-use ASucic\JsonApi\Service\ArraySort;
+use ASucic\JsonApi\Factory\SerializerFactory;
 use PHPUnit\Framework\TestCase;
-use Test\Resource\Entity\Embedded1;
-use Test\Resource\Entity\Embedded2;
-use Test\Resource\Entity\Embedded3;
-use Test\Resource\Entity\TestObject;
-use Test\Resource\Entity\TestRelatedObject;
+use Test\Resource\Entity\Order\Item;
+use Test\Resource\Entity\Order\Order;
 use Test\Resource\Schema\Entity\Embedded1Schema;
-use Test\Resource\Schema\Entity\TestObjectSchema;
+use Test\Resource\Schema\Order\OrderSchema;
 
 class JsonApiSerializerListTest extends TestCase
 {
-    public static JsonApiSerializer $serializer;
-
-    public static function setUpBeforeClass(): void
+    /** @test */
+    public function can_serialize_list_of_objects(): void
     {
-        parent::setUpBeforeClass();
+        $firstOrder = new Order(1, 'Test street');
+        $firstOrder->addItem(new Item(1, 10, 100, 'first item'));
+        $firstOrder->addItem(new Item(2, 4, 75, 'second item'));
 
-        $sorter = new ArraySort();
-        $propertyReader = new Reader\PropertyReader();
-        $attributeReader = new Reader\AttributeReader($propertyReader);
-        $identityReader = new Reader\IdentityReader($propertyReader);
-        $relationshipReader = new Reader\RelationshipReader($identityReader, $propertyReader, $sorter);
-        $includedReader = new Reader\IncludedReader(
-            $propertyReader,
-            $identityReader,
-            $attributeReader,
-            $relationshipReader,
-            $sorter,
-        );
+        $secondOrder = new Order(2, 'Test street 2');
+        $secondOrder->addItem(new Item(3, 2, 22, 'third item'));
+        $secondOrder->addItem(new Item(4, 5, 66, 'fourth item'));
 
-        self::$serializer = new JsonApiSerializer(
-            $attributeReader,
-            $identityReader,
-            $relationshipReader,
-            $includedReader,
-        );
-    }
+        $orders = [$firstOrder, $secondOrder];
 
-    /** @ test */
-    public function can_serialize_object(): void
-    {
-        $object = new TestObject(1, 'test', new TestRelatedObject(1, 'test1'), [
-            new TestRelatedObject(2, 'test2'),
-            new TestRelatedObject(3, 'test3'),
-        ]);
+        $result = SerializerFactory::createJsonApiSerializer()
+            ->list($orders, new OrderSchema(), ['items'])
+        ;
 
-        $result = self::$serializer->single($object, new TestObjectSchema, ['relation', 'relations']);
         $expected = [
             'data' => [
-                'type' => 'test',
-                'id' => '1',
-                'attributes' => [
-                    'title' => 'test',
-                ],
-                'relationships' => [
-                    'relation' => [
-                        'data' => [
-                            'type' => 'related',
-                            'id' => '1',
+                [
+                    'type' => 'order',
+                    'id' => '1',
+                    'attributes' => [
+                        'address' => 'Test street',
+                    ],
+                    'relationships' => [
+                        'items' => [
+                            'data' => [
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '1',
+                                ],
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '2',
+                                ],
+                            ],
                         ],
                     ],
-                    'relations' => [
-                        'data' => [
-                            [
-                                'type' => 'related',
-                                'id' => '2',
-                            ],
-                            [
-                                'type' => 'related',
-                                'id' => '3',
+                ],
+                [
+                    'type' => 'order',
+                    'id' => '2',
+                    'attributes' => [
+                        'address' => 'Test street 2',
+                    ],
+                    'relationships' => [
+                        'items' => [
+                            'data' => [
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '3',
+                                ],
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '4',
+                                ],
                             ],
                         ],
                     ],
@@ -82,24 +75,39 @@ class JsonApiSerializerListTest extends TestCase
             ],
             'included' => [
                 [
-                    'type' => 'related',
+                    'type' => 'order-item',
                     'id' => '1',
                     'attributes' => [
-                        'title' => 'test1',
+                        'quantity' => 10,
+                        'price' => 100,
+                        'name' => 'first item',
                     ],
                 ],
                 [
-                    'type' => 'related',
+                    'type' => 'order-item',
                     'id' => '2',
                     'attributes' => [
-                        'title' => 'test2',
+                        'quantity' => 4,
+                        'price' => 75,
+                        'name' => 'second item',
                     ],
                 ],
                 [
-                    'type' => 'related',
+                    'type' => 'order-item',
                     'id' => '3',
                     'attributes' => [
-                        'title' => 'test3',
+                        'quantity' => 2,
+                        'price' => 22,
+                        'name' => 'third item',
+                    ],
+                ],
+                [
+                    'type' => 'order-item',
+                    'id' => '4',
+                    'attributes' => [
+                        'quantity' => 5,
+                        'price' => 66,
+                        'name' => 'fourth item',
                     ],
                 ],
             ],
@@ -108,47 +116,89 @@ class JsonApiSerializerListTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    /** @ test */
-    public function can_serialize_object_with_embedded_relationships(): void
+    /** @test */
+    public function can_serialize_object_with_shared_relationships(): void
     {
-        $embeddedRelationship = new Embedded3(3);
-        $relationship = new Embedded2(2, $embeddedRelationship);
-        $object = new Embedded1(1, $relationship);
+        $firstItem = new Item(1, 100, 100, 'first item');
+        $secondItem = new Item(2, 200, 200, 'second item');
 
-        $result = self::$serializer->single($object, new Embedded1Schema, [
-            'embedded2',
-            'embedded2.embedded3',
-        ]);
+        $firstOrder = new Order(1, 'Test street');
+        $firstOrder->addItem($firstItem);
+        $firstOrder->addItem($secondItem);
+
+        $secondOrder = new Order(2, 'Test street 2');
+        $secondOrder->addItem($firstItem);
+        $secondOrder->addItem($secondItem);
+
+        $orders = [$firstOrder, $secondOrder];
+
+        $result = SerializerFactory::createJsonApiSerializer()
+            ->list($orders, new OrderSchema(), ['items'])
+        ;
 
         $expected = [
             'data' => [
-                'type' => 'embedded1',
-                'id' => '1',
-                'relationships' => [
-                    'embedded2' => [
-                        'data' => [
-                            'type' => 'embedded2',
-                            'id' => '2',
+                [
+                    'type' => 'order',
+                    'id' => '1',
+                    'attributes' => [
+                        'address' => 'Test street',
+                    ],
+                    'relationships' => [
+                        'items' => [
+                            'data' => [
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '1',
+                                ],
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '2',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    'type' => 'order',
+                    'id' => '2',
+                    'attributes' => [
+                        'address' => 'Test street 2',
+                    ],
+                    'relationships' => [
+                        'items' => [
+                            'data' => [
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '1',
+                                ],
+                                [
+                                    'type' => 'order-item',
+                                    'id' => '2',
+                                ],
+                            ],
                         ],
                     ],
                 ],
             ],
             'included' => [
                 [
-                    'type' => 'embedded2',
-                    'id' => '2',
-                    'relationships' => [
-                        'embedded3' => [
-                            'data' => [
-                                'type' => 'embedded3',
-                                'id' => '3',
-                            ],
-                        ],
+                    'type' => 'order-item',
+                    'id' => '1',
+                    'attributes' => [
+                        'quantity' => 100,
+                        'price' => 100,
+                        'name' => 'first item',
                     ],
                 ],
                 [
-                    'type' => 'embedded3',
-                    'id' => '3',
+                    'type' => 'order-item',
+                    'id' => '2',
+                    'attributes' => [
+                        'quantity' => 200,
+                        'price' => 200,
+                        'name' => 'second item',
+                    ],
                 ],
             ],
         ];

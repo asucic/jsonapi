@@ -1,12 +1,12 @@
 <?php declare(strict_types = 1);
 
-namespace ASucic\JsonApi\Serializer\Reader;
+namespace ASucic\JsonApi\Serializer\Encoder;
 
 use ASucic\JsonApi\Exception\Serializer\Reader\PropertyNotFoundException;
 use ReflectionClass;
 use ReflectionException;
 
-final class PropertyReader
+class PropertyEncoder
 {
     private const METHOD_PREFIXES = [
         '',
@@ -17,7 +17,7 @@ final class PropertyReader
     ];
 
     /** @throws PropertyNotFoundException|ReflectionException */
-    public function read(object $object, string $attribute)
+    public function encode(object $object, string $attribute)
     {
         $reflection = new ReflectionClass($object);
 
